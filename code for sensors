@@ -1,0 +1,108 @@
+#include <LiquidCrystal_I2C.h>
+#include "DHT.h"
+
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+const int MOISTURE = 4;    
+const int PUMP = 8;
+const int LDR = 3;
+int LIGHT = 10;
+int FAN = 11;
+int MOISTURESTATE = LOW; // Initialize to LOW (assumes LOW indicates wet soil)
+int LDRSTATE = LOW; // Assuming LOW means dark
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("GREEN HOUSE :");
+  dht.begin();
+
+  pinMode(MOISTURE, INPUT);
+  pinMode(LDR, INPUT);
+  pinMode(PUMP, OUTPUT);
+  pinMode(LIGHT, OUTPUT);
+  pinMode(FAN, OUTPUT);
+ 
+  Serial.begin(9600);
+  Serial.println("start");
+  delay(2000);
+}
+
+void loop() {
+  delay(2000);
+  lcd.clear();
+  
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  
+  if (isnan(h) || isnan(t)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+  
+  Serial.print(F("Humidity: "));
+  Serial.print(h);
+  Serial.print(F("%  Temperature: "));
+  Serial.println(t);
+  
+  lcd.setCursor(0,1);
+  lcd.print("H:");
+  lcd.setCursor(8,1);
+  lcd.print("T:");
+  lcd.setCursor(2,1);
+  lcd.print(h);
+  lcd.setCursor(11,1);
+  lcd.print(t);
+ 
+  MOISTURESTATE = digitalRead(MOISTURE);
+  Serial.print("MOISTURESTATE : ");
+  Serial.println(MOISTURESTATE);
+  lcd.setCursor(0,0);
+  lcd.print("M : ");
+ 
+  LDRSTATE = digitalRead(LDR);
+  Serial.print("LDRSTATE : ");
+  Serial.println(LDRSTATE);
+  lcd.setCursor(8,0);
+  lcd.print("L : ");
+ 
+  delay(500);
+  
+  if (MOISTURESTATE == LOW) { // If soil is wet
+    lcd.setCursor(4,0);
+    lcd.print("WET");
+    Serial.println("PUMP OFF");
+    digitalWrite(PUMP, LOW);
+  } else { // If soil is dry
+    lcd.setCursor(4,0);
+    lcd.print("DRY");
+    Serial.println("PUMP ON");
+    digitalWrite(PUMP, HIGH);
+  }
+ 
+  if (LDRSTATE == LOW) { // If it's dark
+    lcd.setCursor(12,0);
+    lcd.print("OFF ");
+    Serial.println("LIGHT OFF");
+    digitalWrite(LIGHT, LOW);
+  } else { // If it's bright
+    lcd.setCursor(12,0);
+    lcd.print("ON  ");
+    Serial.println("LIGHT ON");
+    digitalWrite(LIGHT, HIGH);
+  }
+  
+  if (t > 40) { // If temperature exceeds 40°C
+    Serial.println("FAN ON");
+    digitalWrite(FAN, HIGH);
+  } else {
+    Serial.println("FAN OFF");
+    digitalWrite(FAN, LOW);
+  }
+}
